@@ -81,7 +81,7 @@ h3.s{font-size:1.2rem;margin:1rem 0 .3rem}
 </head>
 <body>
 <header>
-  <h1>Ma vitrine <small style="font:400 .75rem Barlow,sans-serif;color:var(--mute)">v13</small></h1>
+  <h1>Ma vitrine <small style="font:400 .75rem Barlow,sans-serif;color:var(--mute)">v14</small></h1>
   <input class="search" id="q" type="search" placeholder="Rechercher dans cette collection…" aria-label="Rechercher">
   
   <button id="acc">Compte</button>
@@ -104,13 +104,15 @@ h3.s{font-size:1.2rem;margin:1rem 0 .3rem}
       <div class="stage" id="stage"><div class="noimg" id="noimg">Aucune photo. Ajoutez le visuel générique ou vos propres photos.</div></div>
       <div class="thumbs" id="thumbs"></div>
       <div class="row">
-        <button id="addGen">+ Visuel générique</button>
-        <button id="addOwn">+ Ma photo</button>
+        <button class="p" id="gimg">Chercher sur Google Images</button>
+        <button id="addOwn">+ Ajouter une photo</button>
+        <button id="paste">Coller l’image</button>
+        <button id="cover">Mettre en couverture</button>
         <button id="rmImg" class="d">Retirer la photo</button>
         <label style="display:flex;gap:.3rem;align-items:center"><input type="checkbox" id="gridT"> Grille 8×12</label>
       </div>
       <input type="file" id="imgIn" accept="image/*" hidden>
-      <p class="mute">Cliquez sur la photo pour placer un défaut. Les cases de la grille (A1 à H12) servent de repère.</p>
+      <p class="mute">Astuce : sur Google Images, copiez l’image, revenez ici et cliquez sur « Coller l’image » (ou Ctrl+V). Cliquez sur une photo pour y placer un défaut ; les cases de la grille (A1 à H12) servent de repère.</p>
     </section>
     <section>
       <div class="f" id="form"></div>
@@ -140,7 +142,7 @@ h3.s{font-size:1.2rem;margin:1rem 0 .3rem}
 <dialog id="dlg2" style="width:min(680px,96vw)">
   <div class="dh"><h2>Champs de la collection</h2><button class="p" id="fclose">Terminer</button></div>
   <div style="padding:1rem 1.1rem;max-height:calc(94vh - 120px);overflow:auto">
-    <p class="mute">Le titre, l’état et les notes sont toujours présents. Tous les autres champs sont à vous : ajoutez, renommez, réordonnez ou supprimez.</p>
+    <p class="mute">Le titre, l’état et les notes sont toujours présents. Tous les autres champs sont à vous : ajoutez, renommez, réordonnez ou supprimez. « Sous-titre » affiche le champ sous le titre ; « Recherche d’image » l’ajoute à la recherche Google Images (avec le nom de la collection et le titre).</p>
     <h3 class="s" style="margin-top:.2rem">États proposés</h3>
     <input id="stl" aria-label="États proposés" placeholder="Choix séparés par des virgules" style="width:100%;padding:.45rem .55rem;border:1px solid var(--line);border-radius:6px;background:var(--bg)">
     <label style="display:flex;gap:.4rem;align-items:center;margin-top:.5rem;color:var(--ink);font-size:.9rem"><input type="checkbox" id="stsub"> Afficher l’état dans le sous-titre</label>
@@ -180,7 +182,7 @@ var CFG={states:["neuf sous blister","comme neuf","très bon état","rayures lé
   ["bonus","Bonus","multi",["BD","DVD","4K","CD"]]]};
 function applySteel(c){
   var old=c.fields.filter(function(f){return STEEL.some(function(o){return o[0]===f.id})&&c.items.some(function(i){return i.values&&i.values[f.id]})});
-  c.fields=CFG.fields.map(function(f){return {id:f[0],label:f[1],type:f[2],options:f[3].slice(),sub:f[0]==="version"}}).concat(old);
+  c.fields=CFG.fields.map(function(f){return {id:f[0],label:f[1],type:f[2],options:f[3].slice(),sub:f[0]==="version",img:f[0]==="version"}}).concat(old);
   c.states=CFG.states.slice();c.subState=true;c.subSet=true;
   var m={"Neuf scellé":"neuf sous blister","Comme neuf":"comme neuf","Abîmé":"très abîmé"};
   c.items.forEach(function(i){if(m[i.state])i.state=m[i.state]})}
@@ -289,7 +291,8 @@ function drawFields(){
     function mv(d){var j=i+d;if(j<0||j>=c.fields.length)return;var t=c.fields[i];c.fields[i]=c.fields[j];c.fields[j]=t;Store.save();drawFields()}
     var sl=document.createElement("label");sl.style.cssText="display:flex;gap:.3rem;align-items:center;color:var(--ink);font-size:.85rem";
     var cb=document.createElement("input");cb.type="checkbox";cb.checked=!!f.sub;cb.onchange=function(){f.sub=cb.checked;c.subSet=true;Store.save()};sl.appendChild(cb);sl.appendChild(document.createTextNode("Sous-titre"));
-    r.appendChild(l);r.appendChild(s);r.appendChild(sl);r.appendChild(btn("↑",function(){mv(-1)},"Monter"));r.appendChild(btn("↓",function(){mv(1)},"Descendre"));
+    var gl=document.createElement("label");gl.style.cssText=sl.style.cssText;var gb=document.createElement("input");gb.type="checkbox";gb.checked=!!f.img;gb.onchange=function(){f.img=gb.checked;Store.save()};gl.appendChild(gb);gl.appendChild(document.createTextNode("Recherche d’image"));
+    r.appendChild(l);r.appendChild(s);r.appendChild(sl);r.appendChild(gl);r.appendChild(btn("↑",function(){mv(-1)},"Monter"));r.appendChild(btn("↓",function(){mv(1)},"Descendre"));
     var rm=btn("✕",function(){ask("Supprimer le champ « "+f.label+" » ?",{ok:"Supprimer",danger:1}).then(function(ok){if(ok){c.fields.splice(i,1);Store.save();drawFields()}})},"Supprimer le champ");rm.className="d";r.appendChild(rm);
     r.appendChild(op);box.appendChild(r);
   });
@@ -387,6 +390,7 @@ function drawItem(){
       p.onclick=function(e){e.stopPropagation();selDef=d.id;drawItem()};st.appendChild(p);
     });
   }
+  $("cover").style.display=(im&&cur.images[0]&&cur.images[0].id!==im.id)?"":"none";$("rmImg").style.display=im?"":"none";$("gimg").title="Recherche : "+imgQuery();
   var th=$("thumbs");th.innerHTML="";
   cur.images.forEach(function(i){var b=document.createElement("button");b.className=i.id===curImg?"on":"";b.title=i.label;var x=document.createElement("img");x.src=i.src;x.alt=i.label;b.appendChild(x);b.onclick=function(){curImg=i.id;selDef=null;drawItem()};th.appendChild(b)});
   var ul=$("dl");ul.innerHTML="";
@@ -432,12 +436,26 @@ $("form").addEventListener("input",function(e){var t=e.target;if(!cur)return;
 $("form").addEventListener("change",function(){persist()});
 $("del").onclick=function(){if(!cur)return;
   ask("Supprimer cet élément ?",{ok:"Supprimer",danger:1}).then(function(ok){if(!ok)return;var c=col();c.items=c.items.filter(function(i){return i!==cur});cur=null;$("dlg").close()})};
-$("addGen").onclick=function(){pendingKind="Générique";$("imgIn").click()};
-$("addOwn").onclick=function(){pendingKind="Ma photo";$("imgIn").click()};
-$("imgIn").onchange=function(e){var f=e.target.files[0];e.target.value="";if(!f||!cur)return;
-  shrink(f,function(src){var n=cur.images.filter(function(i){return i.label.indexOf(pendingKind)===0}).length+1;
-    var o={id:uid(),label:pendingKind+(n>1?" "+n:""),src:src};
-    if(pendingKind==="Générique")cur.images.unshift(o);else cur.images.push(o);curImg=o.id;drawItem();persist()})};
+function addPhoto(src){if(!cur)return;
+  var n=cur.images.length+1,labs=cur.images.map(function(i){return i.label});while(labs.indexOf("Photo "+n)>-1)n++;
+  var o={id:uid(),label:"Photo "+n,src:src};cur.images.push(o);curImg=o.id;drawItem();persist()}
+function imgQuery(){var c=col();return [c.name,cur.title].concat(c.fields.filter(function(f){return f.img&&cur.values[f.id]}).map(function(f){return String(cur.values[f.id]).replace(/, /g," ")})).filter(Boolean).join(" ")}
+$("gimg").onclick=function(){if(cur)window.open("https://www.google.com/search?tbm=isch&q="+encodeURIComponent(imgQuery()),"_blank","noopener")};
+$("addOwn").onclick=function(){$("imgIn").click()};
+$("imgIn").onchange=function(e){var f=e.target.files[0];e.target.value="";if(f&&cur)shrink(f,addPhoto)};
+$("cover").onclick=function(){var im=imgObj();if(!im)return;cur.images=[im].concat(cur.images.filter(function(i){return i!==im}));drawItem();persist()};
+$("paste").onclick=function(){
+  if(!navigator.clipboard||!navigator.clipboard.read){ask("Collage indisponible ici : utilisez Ctrl+V, ou enregistrez l’image puis « + Ajouter une photo ».",{info:1});return}
+  navigator.clipboard.read().then(function(its){var p=null;
+    its.forEach(function(it){it.types.forEach(function(t){if(!p&&t.indexOf("image/")===0)p=it.getType(t)})});
+    if(!p){ask("Aucune image dans le presse-papiers. Sur Google Images, copiez d’abord l’image.",{info:1});return}
+    return p.then(function(b){shrink(b,addPhoto)})
+  }).catch(function(){ask("Lecture du presse-papiers impossible (autorisation refusée ?). Utilisez Ctrl+V, ou enregistrez l’image puis « + Ajouter une photo ».",{info:1})})};
+document.addEventListener("paste",function(e){if(!$("dlg").open||!cur)return;
+  var it=[].slice.call((e.clipboardData&&e.clipboardData.items)||[]).filter(function(x){return x.type.indexOf("image/")===0})[0];
+  if(it){e.preventDefault();shrink(it.getAsFile(),addPhoto)}});
+$("dlg").addEventListener("dragover",function(e){e.preventDefault()});
+$("dlg").addEventListener("drop",function(e){e.preventDefault();var f=e.dataTransfer&&e.dataTransfer.files[0];if(f&&/^image\//.test(f.type)&&cur)shrink(f,addPhoto)});
 $("rmImg").onclick=function(){var im=imgObj();if(!im)return;
   ask("Retirer cette photo et ses défauts ?",{ok:"Retirer",danger:1}).then(function(ok){if(!ok)return;
     cur.images=cur.images.filter(function(i){return i!==im});cur.defects=cur.defects.filter(function(d){return d.img!==im.id});
@@ -566,7 +584,10 @@ Store.open().then(function(){return Store.get("data")}).then(function(d){
   return Store.get("items").then(function(old){data={collections:[steelCol(old||[])]}})
 }).then(function(){data.collections.forEach(normalize);if(!data.cfg1){data.collections.filter(function(c){return /steelbook/i.test(c.name)}).slice(0,1).forEach(applySteel);data.cfg1=1}
 if(!data.cfg2){var BX={"STEELBOOK 1 disque":"STEELBOOK 1 Emplacement","STEELBOOK 2 disques":"STEELBOOK 2 Emplacement","STEELBOOK 3 disques":"STEELBOOK 3 Emplacement","STEELBOOK 4 disques":"STEELBOOK 4 Emplacement","STEELBOOK 6 disques":"STEELBOOK 6 / 8 Emplacement"};
-  data.collections.filter(function(c){return /steelbook/i.test(c.name)}).forEach(function(c){c.fields.forEach(function(f){if(f.id==="boitier")f.options=CFG.fields[1][3].slice()});c.items.forEach(function(i){var v=i.values.boitier;if(BX[v])i.values.boitier=BX[v]})});data.cfg2=1}cc=data.collections[0].id;Store.save();renderAll();if(!data.cfg3)migrate3();initAuth()});
+  data.collections.filter(function(c){return /steelbook/i.test(c.name)}).forEach(function(c){c.fields.forEach(function(f){if(f.id==="boitier")f.options=CFG.fields[1][3].slice()});c.items.forEach(function(i){var v=i.values.boitier;if(BX[v])i.values.boitier=BX[v]})});data.cfg2=1}if(!data.cfg4){data.collections.forEach(function(c){
+    if(/steelbook/i.test(c.name))c.fields.forEach(function(f){if(f.id==="version")f.img=true});
+    c.items.forEach(function(i){(i.images||[]).forEach(function(m,k){if(/^(Générique|Ma photo)/i.test(m.label||""))m.label="Photo "+(k+1)})})});data.cfg4=1}
+cc=data.collections[0].id;Store.save();renderAll();if(!data.cfg3)migrate3();initAuth()});
 })();
 </script>
 </body>
